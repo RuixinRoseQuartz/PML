@@ -1,0 +1,107 @@
+#Practical Machine Learning Course Project
+
+###Summary
+With the popularization of devices such as Jawbone Up, Nike Fuelband and Fitbit, it is now possible to collect large amounts of data about personal activity. 
+
+The goal of this project is to create a model which predicts the manner in which an indiviaul did the exercise -in this case, 10 repititions of the Unilateral Dumbbell Biceps Curl- which leads to the outcome defined by the "classe" variable in the training data set. 
+
+###Reproducibility
+The training data we are using is:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data we are using is:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data source is:
+http://groupware.les.inf.puc-rio.br/har
+ 
+We will set the seed to 10,000. 
+
+###Forming The Model
+As the goal of this project is to predict the manner in which an individual did the exercise leading to the outcome variable of *classe*, we will look at the five different manners which leads to the outcome. The five different ways the exercise can be done are:
+1) Exactly according to the specification (Class A)
+2) Throwing the elbows to the front (Class B)
+3) Lifting the dumbbell only halfway (Class C)
+4) Lowering the dumbbell only halfway (Class D)
+5) Throwing the hips to the front (Class E)
+
+We will test two models(RandomForest and Decision Tree) to see which will give us the best result in predicting the way the excercise was done.
+
+###Cross-Validation
+We will perform cross-validation by patitioning our training data set into 2 subsamples: subTraining data (70% of the original Training data set) and subTesting data (30% of the original Testing data set).
+
+###Preparing R 
+Let's first download(use the install.packages() function in R to download the below packages if not already installed) and call all the packages we forsee using and setting our seed. 
+```{r}
+library(caret)
+library(randomForest)
+library(rpart) 
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+set.seed(10000)
+```
+
+###Preparing And Cleaning The Data
+First we will import the data.
+```{r, cache=TRUE}
+trainURL <- read.csv(url("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"), na.strings=c("NA","#DIV/0!", ""))
+testURL <- read.csv(url("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"), na.strings=c("NA","#DIV/0!", ""))
+```
+
+Second, remove any columns with no data.
+```{r, cache=TRUE}
+trainINT<- trainURL[,colSums(is.na(trainURL)) == 0]
+testINT <- testURL[,colSums(is.na(testURL)) == 0]
+```
+
+Third, remove any columns that are not relevent to the prediction of this model.
+```{r, cache=TRUE}
+trainData   <- trainINT[,-c(1:7)]
+testData <- testINT[,-c(1:7)]
+```
+
+###Partitioning The Data 
+Partion the Training and Testing data sets into two data sets: 70% of the training data and 30% of the test data. 
+```{r, cache=TRUE}
+trainP <- createDataPartition(y=trainData$classe, p=0.7, list=FALSE)
+myTrainP <- trainData[trainP, ]
+myTestP <- trainData[-trainP, ]
+dim(myTrainP)
+dim(myTestP)
+```
+
+###Testing Random Forest Model
+We will develop a model using the Random Forest method and the train data. 
+```{r, cache=TRUE}
+trainModRF <- randomForest(classe ~. , data=myTrainP, method = "class")
+trainPreRF <- predict(trainModRF, myTestP, type = "class")
+```
+
+Let's use the confusion Matrix to test results and see how well this model fits the data.
+```{r}
+confusionMatrix(trainPreRF, myTestP$classe)
+```
+
+We can see that using the Random Forest method, the prediction results are fairly good as there is on average above 99% balanced accuracy for all predictors. Let's try another method to make sure there is not another model that could do better.
+
+###Testing Decision Tree Model
+```{r}
+trainModDT <- rpart(classe ~ ., data=myTrainP, method = "class")
+fancyRpartPlot(trainModDT)
+trainPreDT <- predict(trainModDT, myTestP, type = "class")
+```
+
+Let's use the confusion Matrix to test results and see how well this model fits the data.
+```{r}
+confusionMatrix(trainPreDT, myTestP$classe)
+```
+ 
+We see that the prediction results from the Decision Tree method ranges from 76.58% to 92.52% in balanced accuracy which is not nearly as good as the Random Forest method. We will therefore use the Random Forest Method for the Prediction Quiz.
+
+###Prediction Quiz Formula
+To get the answers for the quiz portion of this project, I will predict using the Random Forest method that we worked on earlier. 
+```{r}
+preQuiz <- predict(trainModRF, testINT, type="class")
+preQuiz
+```
